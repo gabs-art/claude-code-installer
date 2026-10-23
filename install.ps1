@@ -11,9 +11,46 @@ function Install-ClaudeCode {
     $installerUrl = 'https://claude.ai/install.ps1'
     $binDir       = Join-Path $env:USERPROFILE '.local\bin'
 
+    function Test-GitInstalled {
+        if (Get-Command git -ErrorAction SilentlyContinue) { return $true }
+        $paths = @(
+            "$env:ProgramFiles\Git\bin\bash.exe",
+            "${env:ProgramFiles(x86)}\Git\bin\bash.exe",
+            "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+        )
+        foreach ($p in $paths) {
+            if ($p -and (Test-Path $p)) { return $true }
+        }
+        return $false
+    }
+
+    function Update-SessionPath {
+        $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        $userPath    = [Environment]::GetEnvironmentVariable('Path', 'User')
+        $env:Path = (@($machinePath, $userPath) | Where-Object { $_ }) -join ';'
+    }
+
     Write-Host ''
     Write-Host '==> Instalando Claude Code' -ForegroundColor Cyan
     Write-Host "    Windows PowerShell/PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor DarkGray
+
+    Write-Host '==> Verificando Git for Windows' -ForegroundColor Cyan
+    $gitOk = Test-GitInstalled
+    if ($gitOk) {
+        Write-Host '    Git encontrado.' -ForegroundColor DarkGray
+    } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host '    Git nao encontrado. Instalando via winget...' -ForegroundColor Yellow
+        & winget install --id Git.Git -e --source winget --silent --accept-package-agreements --accept-source-agreements
+        Update-SessionPath
+        $gitOk = Test-GitInstalled
+        if ($gitOk) {
+            Write-Host '    Git instalado.' -ForegroundColor Green
+        } else {
+            Write-Host '    [AVISO] Nao foi possivel instalar o Git via winget.' -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host '    [AVISO] Git nao encontrado e winget indisponivel.' -ForegroundColor Yellow
+    }
 
     try {
         Write-Host "==> Baixando instalador oficial: $installerUrl" -ForegroundColor Cyan
@@ -46,15 +83,22 @@ function Install-ClaudeCode {
 
     Write-Host '==> Verificando instalacao' -ForegroundColor Cyan
     $cmd = Get-Command claude -ErrorAction SilentlyContinue
-    if ($cmd) {
-        $version = & claude --version 2>$null
+    if (-not $cmd) {
+        Write-Host "[AVISO] O comando 'claude' nao foi encontrado nesta sessao." -ForegroundColor Yellow
+        Write-Host '        Feche e abra o terminal e tente novamente.' -ForegroundColor Yellow
+        return
+    }
+
+    $version = & claude --version 2>$null
+    if ($gitOk) {
         Write-Host "[OK] Claude Code instalado: $version" -ForegroundColor Green
         Write-Host "     Local: $($cmd.Source)" -ForegroundColor DarkGray
         Write-Host ''
         Write-Host "Execute 'claude' para comecar." -ForegroundColor Cyan
     } else {
-        Write-Host "[AVISO] O comando 'claude' nao foi encontrado nesta sessao." -ForegroundColor Yellow
-        Write-Host '        Feche e abra o terminal e tente novamente.' -ForegroundColor Yellow
+        Write-Host "[AVISO] Claude Code instalado ($version), mas o Git for Windows esta faltando." -ForegroundColor Yellow
+        Write-Host '        O Claude Code nao vai funcionar sem ele.' -ForegroundColor Yellow
+        Write-Host '        Instale em https://git-scm.com/download/win e abra um terminal novo.' -ForegroundColor Yellow
     }
 }
 
