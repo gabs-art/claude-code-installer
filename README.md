@@ -1,71 +1,122 @@
 # claude-code-installer
 
-Instalação do Claude Code em um único comando para PowerShell, CMD e Linux, com o PATH configurado de forma permanente.
+Instale o [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) com um único comando no PowerShell, no CMD ou no Linux, já com o PATH configurado de forma permanente.
 
-> **Aviso:** este é um projeto **não oficial** e não tem nenhuma ligação com a Anthropic. Ele apenas executa o [instalador oficial](https://claude.ai/install.ps1) do Claude Code e, em seguida, ajusta o PATH do usuário para que o comando `claude` fique disponível em qualquer terminal.
+> **Aviso:** este é um projeto **não oficial**, mantido pela comunidade, sem nenhuma ligação com a Anthropic. Ele utiliza o instalador oficial do Claude Code e apenas automatiza as etapas de preparação e configuração ao redor dele.
 
-## Sobre o projeto
+## Por que usar
 
-O objetivo é facilitar a instalação do Claude Code em várias máquinas (estações Windows e VMs Linux) usando apenas uma URL, sem precisar instalar nada antes. Os scripts usam somente ferramentas nativas de cada sistema (`irm` no PowerShell e `curl` ou `wget` no Linux).
-
-O que os scripts fazem:
-
-1. Baixam e executam o instalador oficial do Claude Code.
-2. Adicionam `~/.local/bin` ao PATH do usuário de forma permanente, sem duplicar a entrada caso o script seja executado novamente.
-3. Verificam se o comando `claude` ficou disponível.
+O instalador oficial do Claude Code baixa e instala o programa, mas em algumas máquinas ainda é preciso ajustar o PATH manualmente, instalar dependências ou contornar limitações de sistemas mais antigos. Este projeto junta tudo isso em um único comando, o que é útil principalmente para quem precisa instalar o Claude Code em várias máquinas, servidores ou máquinas virtuais.
 
 ## Instalação
 
-Substitua `SEU_USUARIO` pelo seu usuário do GitHub.
-
-### PowerShell
+### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/SEU_USUARIO/claude-code-installer/main/install.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072; irm https://raw.githubusercontent.com/gabs-art/claude-code-installer/main/install.ps1 | iex
 ```
 
-### CMD
+### Windows (CMD)
 
 ```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SEU_USUARIO/claude-code-installer/main/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072; irm https://raw.githubusercontent.com/gabs-art/claude-code-installer/main/install.ps1 | iex"
 ```
 
 ### Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SEU_USUARIO/claude-code-installer/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gabs-art/claude-code-installer/main/install.sh | bash
 ```
 
-Se a máquina não tiver `curl`:
+Se a sua distribuição não tiver `curl`:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/SEU_USUARIO/claude-code-installer/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/gabs-art/claude-code-installer/main/install.sh | bash
 ```
 
-## Após a instalação
+Nenhum dos comandos exige instalar algo antes: eles usam apenas ferramentas que já vêm com o sistema.
 
-No PowerShell, o comando `claude` já fica disponível na mesma janela. No CMD e no Linux, abra um terminal novo (ou, no Linux, execute `source ~/.bashrc`) e depois rode:
+## Depois de instalar
+
+No PowerShell, o comando `claude` já funciona na mesma janela. No CMD e no Linux, abra um terminal novo (no Linux, também é possível rodar `source ~/.bashrc`). Para confirmar a instalação:
+
+```bash
+claude --version
+```
+
+Para começar a usar, entre na pasta do seu projeto e execute:
 
 ```bash
 claude
 ```
 
-## Observações
+Na primeira execução, o Claude Code vai pedir que você faça login com a sua conta.
 
-- A instalação é feita **por usuário**. Cada conta da máquina precisa executar o comando uma vez.
-- No Linux, evite rodar como `root` se outro usuário for utilizar o Claude Code, pois a instalação ficará apenas em `/root`.
-- Executar o script mais de uma vez é seguro: ele reinstala ou atualiza o Claude Code sem duplicar o PATH.
+## O que o script faz
 
-## Estrutura
+### Windows
+
+1. Habilita o TLS 1.2, necessário em versões antigas do Windows para baixar arquivos do GitHub.
+2. Verifica se o Git for Windows está instalado, já que o Claude Code depende dele no Windows. Se não estiver, instala via `winget` ou, quando o `winget` não está disponível, baixando o instalador oficial do Git direto do GitHub.
+3. Executa o instalador oficial do Claude Code (`https://claude.ai/install.ps1`).
+4. Se o instalador oficial falhar, tenta instalar via `npm`, caso o Node.js esteja disponível.
+5. Adiciona `%USERPROFILE%\.local\bin` ao PATH do usuário de forma permanente.
+6. Confirma se o comando `claude` está funcionando.
+
+### Linux
+
+1. Executa o instalador oficial do Claude Code (`https://claude.ai/install.sh`).
+2. Adiciona `~/.local/bin` ao PATH nos arquivos `~/.profile`, `~/.bashrc` e `~/.zshrc` (quando existir).
+3. Confirma se o comando `claude` está funcionando.
+
+O script pode ser executado mais de uma vez com segurança: ele reinstala ou atualiza o Claude Code sem duplicar entradas no PATH.
+
+## Requisitos
+
+- **Windows:** Windows 10 ou Windows Server 2019 e versões mais recentes, conforme os requisitos oficiais do Claude Code. Versões anteriores, como o Windows Server 2016, podem funcionar, mas não são suportadas oficialmente.
+- **Linux:** qualquer distribuição com `bash` e `curl` ou `wget`.
+- Acesso à internet para `claude.ai`, `github.com` e `raw.githubusercontent.com`.
+- Uma conta com acesso ao Claude Code.
+
+Consulte a [documentação oficial](https://docs.claude.com/en/docs/claude-code/overview) para os requisitos atualizados.
+
+## Solução de problemas
+
+**"Não foi possível criar um canal seguro para SSL/TLS"**
+O comando foi executado sem o trecho inicial que habilita o TLS 1.2. Copie o comando completo da seção de instalação.
+
+**O comando `claude` não é reconhecido**
+Feche todos os terminais e abra um novo. Terminais e editores (como o VS Code) que já estavam abertos durante a instalação só enxergam o PATH atualizado depois de reiniciados.
+
+**"Git não encontrado" mesmo após a instalação**
+A instalação do Git pode ter sido bloqueada ou cancelada na janela de permissão de administrador. Instale manualmente pelo [site oficial do Git](https://git-scm.com/download/win) e abra um terminal novo.
+
+**"npm não encontrado"**
+O instalador oficial falhou e o script não encontrou o Node.js para usar como alternativa. Instale o [Node.js](https://nodejs.org) versão 18 ou superior e execute o comando novamente.
+
+**Erros de conexão em redes corporativas**
+Proxies e firewalls podem bloquear `claude.ai` ou `raw.githubusercontent.com`. Verifique com a equipe responsável pela rede se esses endereços estão liberados.
+
+## Observações importantes
+
+- A instalação é feita **por usuário**. Cada conta do sistema precisa executar o comando separadamente.
+- No Windows, evite executar o terminal "como administrador" com uma conta diferente da sua, pois o Claude Code será instalado no perfil dessa outra conta.
+- No Linux, evite executar como `root` se outro usuário for utilizar o Claude Code, pois a instalação ficará apenas em `/root`.
+
+## Segurança
+
+Executar scripts direto da internet (`irm | iex` ou `curl | bash`) significa rodar o código que estiver no repositório naquele momento. Recomendamos ler os scripts [`install.ps1`](install.ps1) e [`install.sh`](install.sh) antes de usar, principalmente em ambientes de produção. Ambos são curtos e não coletam nem enviam nenhuma informação.
+
+## Contribuindo
+
+Sugestões e correções são bem-vindas. Abra uma [issue](https://github.com/gabs-art/claude-code-installer/issues) descrevendo o problema (incluindo o sistema operacional e a saída completa do terminal) ou envie um pull request.
+
+## Estrutura do repositório
 
 ```
 claude-code-installer/
-├── install.ps1      # Windows (PowerShell e CMD)
-├── install.sh       # Linux
-├── .gitattributes   # Garante quebras de linha corretas em cada script
+├── install.ps1      # Instalador para Windows (PowerShell e CMD)
+├── install.sh       # Instalador para Linux
+├── .gitattributes   # Garante as quebras de linha corretas em cada script
 └── README.md
 ```
-
-## Documentação oficial
-
-Para mais informações sobre o Claude Code, consulte a [documentação oficial](https://docs.claude.com/en/docs/claude-code/overview).
